@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - isSubscribed: boolean
+    //   - stripeCustomerId: string
+    //   - subscriptionId: string
+    //   - createdAt: timestamp
+    //
+    // Collection: users/{userId}/analyses
+    // Document ID: {analysisId}
+    // Fields:
+    //   - id: string (required)
+    //   - userId: string (required)
+    //   - fileName: string (required)
+    //   - fileSize: number
+    //   - date: timestamp
+    //   - analysis: string (required)
+    //   - fullText: string
+    //   - feedback: map (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "brechietantonio@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['id', 'userId', 'fileName', 'analysis']) &&
+             data.id is string && data.userId == request.auth.uid &&
+             data.fileName is string && data.fileName.size() < 255 &&
+             data.analysis is string && data.analysis.size() < 100000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      
+      match /analyses/{analysisId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidAnalysis(request.resource.data);
+        allow update: if isOwner(userId) && isValidAnalysis(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+  }
+}

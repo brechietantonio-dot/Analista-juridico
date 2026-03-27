@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile and subscription data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "isSubscribed": { "type": "boolean" },
+        "stripeCustomerId": { "type": "string" },
+        "subscriptionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Analysis": {
+      "title": "Contract Analysis",
+      "description": "Stored contract analysis results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "analysis": { "type": "string" },
+        "fullText": { "type": "string" },
+        "feedback": {
+          "type": "object",
+          "properties": {
+            "rating": { "type": "string", "enum": ["positive", "negative"] },
+            "comment": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "userId", "fileName", "analysis"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "User contract analyses"
+    }
+  }
+}
